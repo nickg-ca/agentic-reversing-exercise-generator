@@ -1,2 +1,3 @@
 # agentic-reversing-exercise-generator
-How to learn reverse engineering in late 2025
+
+A simple way to generate easy to moderate reverse engineering challenges that actually compile.
