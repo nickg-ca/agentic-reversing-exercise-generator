@@ -15,6 +15,7 @@ def generate_content(api_key, conversation_history):
     # Construct the payload from conversation history
     # The API expects "contents": [{ "role": "user"|"model", "parts": [{ "text": "..." }] }]
     payload = {
+        "tools": [{"code_execution": {}}, {"google_search": {}}],
         "contents": conversation_history
     }
     
@@ -24,6 +25,8 @@ def generate_content(api_key, conversation_history):
     try:
         with urllib.request.urlopen(req) as response:
             response_body = response.read().decode("utf-8")
+            with open("gemini.log", "w") as l:
+                l.write(response_body)
             return json.loads(response_body)
     except urllib.error.HTTPError as e:
         print(f"Error calling Gemini API: {e.code} {e.reason}")
@@ -54,7 +57,9 @@ def main():
         sys.exit(1)
 
     # Initial prompt
-    prompt = "Create a simple C program for a reverse engineering exercise. Do not explain. Output only code."
+    #  uncomment this line to make easier exercises for getting started
+    # prompt = "Create a simple C program for a reverse engineering exercise. Do not explain. Output only code."
+    prompt = "Create a C program for a reverse engineering exercise. Do not explain. Output only code. The code should be extremely obfuscated. You can use the Google Search tool to research advanced obfuscation techniques (e.g. 'C obfuscation techniques', 'opaque predicates', 'control flow flattening'). You should also use the Python code execution tool to generate complex constants or logic. However, your FINAL response MUST be the generated C code enclosed in a markdown code block. Do not just say you cannot do it."
     
     conversation_history = [
         {"role": "user", "parts": [{"text": prompt}]}
@@ -67,7 +72,10 @@ def main():
         response_json = generate_content(api_key, conversation_history)
         
         try:
-            model_response_text = response_json["candidates"][0]["content"]["parts"][0]["text"]
+            parts = response_json["candidates"][0]["content"]["parts"]
+            model_response_text = "".join([part.get("text", "") for part in parts])
+            if not model_response_text:
+                raise KeyError("No text found in response")
         except (KeyError, IndexError):
             print("Error: Unexpected response format from API.")
             print(json.dumps(response_json, indent=2))
@@ -91,7 +99,7 @@ def main():
         result = subprocess.run(compile_cmd, capture_output=True, text=True)
         
         if result.returncode == 0:
-            print("Success! compiled to 'out'")
+            print("Success! Code compiled to 'out', though the program generated might not run or be safe to run.")
             break
         else:
             print("Compilation failed.")
